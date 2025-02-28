@@ -64,12 +64,12 @@ interface WeatherDataItem {
   rain: number;
 }
 
-interface Weather {
-  id: number;
-  main: string;
-  description: string;
-  icon: string;
-  list: string[];
+interface WeatherResponse {
+  city: City;
+  cod: string;
+  message: number;
+  cnt: number;
+  list: WeatherDataItem[];
 }
 
 interface Main {
@@ -120,7 +120,7 @@ export default function Page() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCity, setSelectedCity] = useState<CitySearch | null>(null);
   const [data, setData] = useState<CitySearch[] | null>(null);
-  const [dataWeather, setDataWeather] = useState<Weather | null>(null);
+  const [dataWeather, setDataWeather] = useState<WeatherResponse | null>(null);
   const [dataWeatherCurrent, setDataWeatherCurrent] =
     useState<WeatherDataCurrent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,7 +141,7 @@ export default function Page() {
         if (!res.ok) {
           throw new Error("Failed to fetch data");
         }
-        const result = await res.json();
+        const result: CitySearch[] = await res.json();
         setData(result);
       } catch (error) {
         setError(error as Error);
@@ -166,11 +166,10 @@ export default function Page() {
         if (!res.ok) {
           throw new Error("Failed to fetch weather data");
         }
-        const result = await res.json();
-        const resultCurrent = await resCurrent.json();
+        const result: WeatherResponse = await res.json();
+        const resultCurrent: WeatherDataCurrent = await resCurrent.json();
         setDataWeather(result);
         setDataWeatherCurrent(resultCurrent);
-        console.log(resultCurrent);
       } catch (error) {
         setError(error as Error);
       } finally {
@@ -189,14 +188,10 @@ export default function Page() {
       setShowList(false);
     }
   }
-  function handleClickList(e: any) {
+  function handleClickList(city: CitySearch) {
     setShowList(false); 
-    console.log("e");
-    console.log(e);
-    setSelectedCity(e.d);
-    localStorage.setItem("city", JSON.stringify(e.d));
-
-    console.log(selectedCity);
+    setSelectedCity(city);
+    localStorage.setItem("city", JSON.stringify(city));
     setSearchTerm("");
   }
 
@@ -218,17 +213,14 @@ export default function Page() {
         placeholder="Enter City name and choose on the list"
         // onFocus={(e) => {
         //   setShowList(true);
-      
         // }}
       ></Input>
-      <table
-        className={`${showList ? null : "hidden"} self-start ml-6 relative`}
-      >
+      <table className={`${showList ? null : "hidden"} self-start ml-6 relative`}>
         <tbody>
           {data && data.length > 0
-            ? data.map((d, index: number) => (
+            ? data.map((d:CitySearch, index: number) => (
                 <tr key={index} className="odd:bg-sky-200">
-                  <td onClick={() => handleClickList({ d })}>
+                  <td onClick={() => handleClickList( d )}>
                     {d.name}, {d.state ? d.state + ", " : null} {d.country}
                   </td>
                 </tr>
