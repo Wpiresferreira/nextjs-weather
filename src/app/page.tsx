@@ -1,101 +1,317 @@
-import Image from "next/image";
+"use client";
+import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
 
-export default function Home() {
+interface Coord {
+  lon: number;
+  lat: number;
+}
+
+interface City {
+  id: number;
+  name: string;
+  coord: Coord;
+  country: string;
+  population: number;
+  timezone: number;
+}
+
+interface CitySearch {
+  name: string;
+  lat: number;
+  lon: number;
+  country: string;
+  state: string;
+}
+
+interface Temp {
+  day: number;
+  min: number;
+  max: number;
+  night: number;
+  eve: number;
+  morn: number;
+}
+
+interface FeelsLike {
+  day: number;
+  night: number;
+  eve: number;
+  morn: number;
+}
+
+interface Weather {
+  id: number;
+  main: string;
+  description: string;
+  icon: string;
+}
+
+interface WeatherDataItem {
+  dt: number;
+  sunrise: number;
+  sunset: number;
+  temp: Temp;
+  feels_like: FeelsLike;
+  pressure: number;
+  humidity: number;
+  weather: Weather[];
+  speed: number;
+  deg: number;
+  gust: number;
+  clouds: number;
+  pop: number;
+  rain: number;
+}
+
+interface Weather {
+  id: number;
+  main: string;
+  description: string;
+  icon: string;
+  list: string[];
+}
+
+interface Main {
+  temp: number;
+  feels_like: number;
+  temp_min: number;
+  temp_max: number;
+  pressure: number;
+  humidity: number;
+  sea_level: number;
+  grnd_level: number;
+}
+
+interface Wind {
+  speed: number;
+  deg: number;
+}
+
+interface Clouds {
+  all: number;
+}
+
+interface Sys {
+  type: number;
+  id: number;
+  country: string;
+  sunrise: number;
+  sunset: number;
+}
+
+interface WeatherDataCurrent {
+  coord: Coord;
+  weather: Weather[];
+  base: string;
+  main: Main;
+  visibility: number;
+  wind: Wind;
+  clouds: Clouds;
+  dt: number;
+  sys: Sys;
+  timezone: number;
+  id: number;
+  name: string;
+  cod: number;
+}
+
+export default function Page() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCity, setSelectedCity] = useState<CitySearch | null>(null);
+  const [data, setData] = useState<CitySearch[] | null>(null);
+  const [dataWeather, setDataWeather] = useState<Weather | null>(null);
+  const [dataWeatherCurrent, setDataWeatherCurrent] =
+    useState<WeatherDataCurrent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [showList, setShowList] = useState<boolean>(false);
+
+  useEffect(() => {
+    const storedCity = localStorage.getItem("city");
+    if (storedCity) {
+      setSelectedCity(JSON.parse(storedCity));
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/fetchData?searchTerm=${searchTerm}`);
+        if (!res.ok) {
+          throw new Error("Failed to fetch data");
+        }
+        const result = await res.json();
+        setData(result);
+      } catch (error) {
+        setError(error as Error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (!selectedCity) return;
+    const fetchWeather = async () => {
+      try {
+        const res = await fetch(
+          `/api/fetchWeather?lat=${selectedCity.lat}&lon=${selectedCity.lon}`
+        );
+        const resCurrent = await fetch(
+          `/api/fetchWeatherCurrent?lat=${selectedCity.lat}&lon=${selectedCity.lon}`
+        );
+        if (!res.ok) {
+          throw new Error("Failed to fetch weather data");
+        }
+        const result = await res.json();
+        const resultCurrent = await resCurrent.json();
+        setDataWeather(result);
+        setDataWeatherCurrent(resultCurrent);
+        console.log(resultCurrent);
+      } catch (error) {
+        setError(error as Error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeather();
+  }, [selectedCity]);
+
+  function handleChangeInput(e: React.ChangeEvent<HTMLInputElement>) {
+    setSearchTerm(e.target.value);
+    if (e.target.value.length > 0) {
+      setShowList(true);
+    } else {
+      setShowList(false);
+    }
+  }
+  function handleClickList(e: any) {
+    setShowList(false); 
+    console.log("e");
+    console.log(e);
+    setSelectedCity(e.d);
+    localStorage.setItem("city", JSON.stringify(e.d));
+
+    console.log(selectedCity);
+    setSearchTerm("");
+  }
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error.message}</div>;
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="max-w-[430px] flex flex-col items-center">
+      <h1 className="text-3xl text-sky-900 font-bold p-6">Weather App</h1>
+      <Input
+        className="p-4 m-4 w-[380px]"
+        value={searchTerm}
+        onChange={handleChangeInput}
+        placeholder="Enter City name and choose on the list"
+        // onFocus={(e) => {
+        //   setShowList(true);
+      
+        // }}
+      ></Input>
+      <table
+        className={`${showList ? null : "hidden"} self-start ml-6 relative`}
+      >
+        <tbody>
+          {data && data.length > 0
+            ? data.map((d, index: number) => (
+                <tr key={index} className="odd:bg-sky-200">
+                  <td onClick={() => handleClickList({ d })}>
+                    {d.name}, {d.state ? d.state + ", " : null} {d.country}
+                  </td>
+                </tr>
+              ))
+            : null}
+        </tbody>
+      </table>
+      {selectedCity && !showList ? (
+        <>
+          <div className="border-2 border-sky-900 rounded-lg max-w-[430px] min-w-[390px] flex flex-col items-center">
+            <h1 className="text-2xl font-bold">
+              {dataWeatherCurrent ? dataWeatherCurrent.name : "Select a city"}
+            </h1>
+            <div className="flex justify-center items-center">
+              {dataWeatherCurrent ? (
+                <>
+                  <img
+                    src={`https://openweathermap.org/img/wn/${dataWeatherCurrent.weather[0].icon}@2x.png`}
+                  ></img>
+                  <h1 className="text-3xl font-bold">
+                    {dataWeatherCurrent
+                      ? Math.floor(dataWeatherCurrent.main.temp) + "ºC"
+                      : null}
+                  </h1>
+                </>
+              ) : null}
+            </div>
+            <h2>
+              {dataWeatherCurrent
+                ? dataWeatherCurrent.weather[0].main +
+                  " - " +
+                  dataWeatherCurrent.weather[0].description
+                : null}
+            </h2>
+            <div>
+              {dataWeatherCurrent
+                ? "  Feels like " +
+                  Math.floor(dataWeatherCurrent.main.feels_like) +
+                  "ºC  "
+                : null}
+            </div>
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          {/* <pre>{JSON.stringify(data, null, 2)}</pre> */}
+          <h1 className="font-bold mt-6">Forecast next 5 days</h1>
+          <table className="table-auto grow border-2 border-sky-800 rounded-md">
+            <thead>
+              <tr>
+                <th className="py-4">Date</th>
+                <th className="py-4">Day</th>
+                <th className="py-4">Night</th>
+                <th className="py-4"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {dataWeather &&
+                dataWeather.list.map((data, index) => (
+                  <tr key={index} className="hover:bg-sky-200 odd:bg-sky-50">
+                    <td className="px-4">
+                      {new Date(
+                        new Date().getTime() + 24 * index * 60 * 60 * 1000
+                      ).getDate()}
+                      /
+                      {new Date(
+                        new Date().getTime() + 24 * index * 60 * 60 * 1000
+                      ).getMonth() + 1}
+                    </td>
+                    <td className="px-4">{Math.floor(data.temp.day)}ºC</td>
+                    <td className="px-4">{Math.floor(data.temp.eve)}ºC</td>
+                    <td className="px-4">
+                      <div className="max-h-[50px] overflow-hidden">
+                        <img
+                          className="w-[50px] h-[50px]"
+                          src={`https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`}
+                        ></img>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </>
+      ) : null}
     </div>
   );
 }
